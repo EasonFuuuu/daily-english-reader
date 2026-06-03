@@ -33,7 +33,7 @@ SMTP_SERVER = "smtp.qq.com"
 SMTP_PORT = 465
 SENDER_EMAIL = os.environ["SENDER_EMAIL"]
 SENDER_PASSWORD = os.environ["SENDER_PASSWORD"]  # QQ邮箱SMTP授权码
-RECEIVER_EMAIL = os.environ["RECEIVER_EMAIL"]
+RECEIVER_EMAIL = os.environ["RECEIVER_EMAIL"]  # 多个收件人用英文逗号分隔
 HTTP_PROXY = os.environ.get("HTTP_PROXY", "")  # Clash 默认 http://127.0.0.1:7897
 
 # 只给外网爬取用代理，不影响 DeepSeek API
@@ -467,39 +467,28 @@ def build_email_html(translated_articles):
 
 
 def send_email(html):
+    recipients = [r.strip() for r in RECEIVER_EMAIL.split(",") if r.strip()]
+
     msg = MIMEMultipart("alternative")
     date_str = datetime.now().strftime("%Y-%m-%d")
     msg["Subject"] = f" Daily English Reader - {date_str}"
     msg["From"] = f"Daily English Reader <{SENDER_EMAIL}>"
-    msg["To"] = RECEIVER_EMAIL
+    msg["To"] = ", ".join(recipients)
 
     msg.attach(MIMEText(html, "html", "utf-8"))
 
     try:
         with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=30) as server:
             server.login(SENDER_EMAIL, SENDER_PASSWORD)
-            server.sendmail(SENDER_EMAIL, [RECEIVER_EMAIL], msg.as_string())
-        print("  邮件发送成功!")
+            server.sendmail(SENDER_EMAIL, recipients, msg.as_string())
+        print(f"  邮件发送成功! 收件人: {len(recipients)} 人")
     except Exception as e:
         print(f"  邮件发送失败: {e}")
 
 
 # ── 主流程 ────────────────────────────────────────────
 
-def should_run_today(interval_days=3):
-    """检查今天是否应该运行（每 interval_days 天一次）"""
-    today = datetime.now()
-    # 使用 2026-01-01 作为基准日起点，按天数差值 mod interval_days 判断
-    epoch = datetime(2026, 1, 1)
-    days_diff = (today - epoch).days
-    return days_diff % interval_days == 0
-
-
 def main():
-    if not should_run_today():
-        print(f"Today is not a scheduled day, skipping. (run every 3 days)")
-        return
-
     start_time = datetime.now()
     print(f"\n{'='*60}")
     print(f"  Daily English Reader - {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
