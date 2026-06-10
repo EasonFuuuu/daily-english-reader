@@ -11,7 +11,7 @@ import time
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from datetime import datetime, date
 
 import requests
 import feedparser
@@ -488,11 +488,26 @@ def send_email(html):
 
 # ── 主流程 ────────────────────────────────────────────
 
+SEND_INTERVAL_DAYS = 3  # 每隔多少天发一封邮件
+
+
+def should_send_today():
+    """判断今天是否为发送日（从固定锚点起每 N 天一次）"""
+    anchor = date(2025, 1, 1)  # 固定参考日期
+    days_diff = (date.today() - anchor).days
+    return days_diff % SEND_INTERVAL_DAYS == 0
+
+
 def main():
     start_time = datetime.now()
     print(f"\n{'='*60}")
     print(f"  Daily English Reader - {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*60}\n")
+
+    if not should_send_today():
+        print(f"[Skip] 今天是第 {(date.today() - date(2025, 1, 1)).days} 天，"
+              f"不是发送日（每 {SEND_INTERVAL_DAYS} 天一次），退出")
+        return
 
     # 1. RSS
     print("[1/5] 抓取 RSS ...")
